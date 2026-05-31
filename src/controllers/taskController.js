@@ -78,7 +78,7 @@ export const updateTask = asyncHandler(async (req, res) => {
   }
 
   if (task.user.toString() !== req.user._id.toString()) {
-    res.status(401);
+    res.status(403);
     throw new Error("No tienes permiso para editar esta tarea");
   }
 
@@ -107,7 +107,7 @@ export const deleteTask = asyncHandler(async (req, res) => {
   }
 
   if (task.user.toString() !== req.user._id.toString()) {
-    res.status(401);
+    res.status(403);
     throw new Error("No tienes permiso para borrar esta tarea");
   }
 
@@ -162,7 +162,7 @@ export const inviteByEmail = asyncHandler(async (req, res) => {
   // 1. Buscar la tarea y verificar que quien invita sea el dueño
   const task = await Task.findById(id);
   if (!task || task.user.toString() !== req.user._id.toString()) {
-    res.status(401);
+    res.status(403);
     throw new Error("Solo el dueño de la tarea puede invitar colaboradores");
   }
 

@@ -37,13 +37,13 @@ describe("Pruebas de Autenticación (Auth)", () => {
   });
 
   describe("POST /api/v1/auth/login", () => {
-    it("Debería fallar con 401 si el usuario no existe", async () => {
+    it("Debería fallar con 404 si el usuario no existe", async () => {
       const res = await request(app).post("/api/v1/auth/login").send({
         email: "no-existe@test.com",
         password: "Password123!",
       });
 
-      expect(res.statusCode).toBe(401);
+      expect(res.statusCode).toBe(404);
       expect(res.body.message).toMatch(/incorrectos/);
     });
 

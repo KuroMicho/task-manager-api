@@ -1,6 +1,6 @@
 components:
   schemas:
-    # --- ESQUEMAS DE TAREA ---
+    # --- ENTIDAD: TAREA ---
     Task:
       type: object
       properties:
@@ -22,11 +22,11 @@ components:
           example: "high"
         user:
           type: string
-          description: "ID del usuario propietario (Líder)"
+          description: "ID del usuario propietario (Líder del tablero)"
           example: "645a1b2c3d4e5f6g7h8i9j0"
         team:
           type: array
-          description: "IDs de los usuarios invitados al equipo"
+          description: "Colección de ObjectIDs de usuarios invitados al equipo"
           items:
             type: string
           example: ["645a1b2c3d4e5f6g7h8i9j1", "645a1b2c3d4e5f6g7h8i9j2"]
@@ -56,21 +56,29 @@ components:
           type: boolean
           default: false
 
+    # --- ENTIDAD: COMENTARIO (Formato Poblado) ---
     Comment:
       type: object
       properties:
         _id:
           type: string
+          example: "745b2c3d4e5f6g7h8i9j0k1"
         task:
           type: string
-        user:
-          type: object
-          properties:
-            _id: string
-            name: string
+          example: "645a1b2c3d4e5f6g7h8i9j0"
         content:
           type: string
           example: "Ya terminé el diseño en Figma, pueden revisar."
+        user:
+          type: object
+          description: "Datos del autor mapeados mediante populate"
+          properties:
+            _id:
+              type: string
+              example: "645a1b2c3d4e5f6g7h8i9j0"
+            name:
+              type: string
+              example: "Kevin Instructor"
         createdAt:
           type: string
           format: date-time
@@ -84,7 +92,7 @@ components:
           type: string
           example: "He subido los cambios al repositorio."
 
-    # --- ESQUEMAS DE INVITACIÓN Y COMENTARIOS ---
+    # --- ESQUEMAS DE INVITACIÓN Y REORDENAMIENTO ---
     InviteInput:
       type: object
       required:
@@ -95,7 +103,6 @@ components:
           format: email
           example: "estudiante.putumayo@universidad.edu.co"
 
-    # --- ESQUEMA DE REORDENAMIENTO ---
     ReorderInput:
       type: object
       required:
@@ -103,7 +110,7 @@ components:
       properties:
         idsOrder:
           type: array
-          description: "Lista ordenada de los ObjectIDs de las tareas tras el Drag & Drop"
+          description: "Lista ordenada de los ObjectIDs tras el Drag & Drop"
           items:
             type: string
           example:
@@ -114,8 +121,8 @@ components:
             ]
 
   responses:
-    UnauthorizedError:
-      description: Token no proporcionado o inválido.
+    ForbiddenError:
+      description: El usuario está autenticado pero no tiene permisos sobre el recurso (No es dueño o colaborador).
       content:
         application/json:
           schema:
@@ -123,9 +130,10 @@ components:
             properties:
               message:
                 type: string
-                example: "No autorizado, no hay token"
+                example: "Acceso denegado: No tienes los permisos necesarios"
+
     NotFoundError:
-      description: El recurso solicitado no existe.
+      description: El recurso solicitado no existe en la base de datos.
       content:
         application/json:
           schema:
@@ -136,7 +144,9 @@ components:
                 example: "Recurso no encontrado"
 
 paths:
-  # --- RUTAS DE TAREAS ---
+  # ==========================================
+  #  RUTAS GENERALES DE TAREAS
+  # ==========================================
   /tasks:
     get:
       tags:
@@ -147,15 +157,15 @@ paths:
         - bearerAuth: []
       responses:
         200:
-          description: Lista recuperada exitosamente.
+          description: Lista de tareas recuperada exitosamente.
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Task"
-        401:
-          $ref: "#/components/responses/UnauthorizedError"
+        403:
+          $ref: "#/components/responses/ForbiddenError"
 
     post:
       tags:
@@ -171,82 +181,22 @@ paths:
               $ref: "#/components/schemas/TaskInput"
       responses:
         201:
-          description: Tarea creada.
+          description: Tarea creada de manera exitosa.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
 
-  /tasks/{id}:
-    parameters:
-      - in: path
-        name: id
-        required: true
-        schema:
-          type: string
-    put:
-      tags:
-        - Tasks
-      summary: Actualizar tarea
-      security:
-        - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TaskInput"
-      responses:
-        200:
-          description: Actualizado.
-        404:
-          $ref: "#/components/responses/NotFoundError"
-
-    delete:
-      tags:
-        - Tasks
-      summary: Eliminar tarea
-      security:
-        - bearerAuth: []
-      responses:
-        200:
-          description: Eliminado.
-
-  # --- RUTA DE INVITACIONES ---
-  /tasks/{id}/invite:
-    parameters:
-      - in: path
-        name: id
-        required: true
-        schema:
-          type: string
-    post:
-      tags:
-        - Tasks
-      summary: Invitar colaborador por email
-      description: El dueño de la tarea invita a un usuario registrado. Se envía notificación por correo.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/InviteInput"
-      responses:
-        200:
-          description: Invitación exitosa.
-        400:
-          description: El usuario ya está en el equipo.
-        404:
-          description: Usuario no registrado en la plataforma.
-
-  # --- RUTA DE REORDENAMIENTO (DRAG & DROP) ---
+  # ==========================================
+  #  REORDENAMIENTO MASIVO (DRAG & DROP)
+  #  Nota: Se coloca antes de /tasks/{id} para evitar colisiones.
+  # ==========================================
   /tasks/reorder:
     post:
       tags:
         - Tasks
       summary: Reordenar posición manual de las tareas
-      description: Actualiza concurrentemente por lotes (`bulkWrite`) el orden de visualización de las tareas según la disposición en el cliente.
+      description: Actualiza en lote (`bulkWrite`) el orden de visualización de las tareas según la disposición del cliente.
       security:
         - bearerAuth: []
       requestBody:
@@ -257,7 +207,7 @@ paths:
               $ref: "#/components/schemas/ReorderInput"
       responses:
         200:
-          description: Posiciones actualizadas y sincronizadas en la base de datos de manera exitosa.
+          description: Posiciones actualizadas y sincronizadas de manera exitosa.
           content:
             application/json:
               schema:
@@ -276,5 +226,87 @@ paths:
                   message:
                     type: string
                     example: "Se requiere un array válido de IDs ('idsOrder') para reordenar"
-        401:
-          $ref: "#/components/responses/UnauthorizedError"
+        403:
+          $ref: "#/components/responses/ForbiddenError"
+
+  # ==========================================
+  #  GESTIÓN INDIVIDUAL DE TAREAS
+  # ==========================================
+  /tasks/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: ID único de la tarea (ObjectId)
+    put:
+      tags:
+        - Tasks
+      summary: Actualizar tarea
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        200:
+          description: Tarea actualizada correctamente.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        403:
+          $ref: "#/components/responses/ForbiddenError"
+        404:
+          $ref: "#/components/responses/NotFoundError"
+
+    delete:
+      tags:
+        - Tasks
+      summary: Eliminar tarea
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Tarea eliminada correctamente de la persistencia.
+        403:
+          $ref: "#/components/responses/ForbiddenError"
+        404:
+          $ref: "#/components/responses/NotFoundError"
+
+  # ==========================================
+  #  EQUIPO Y COLABORADORES
+  # ==========================================
+  /tasks/{id}/invite:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: ID único de la tarea a la cual se invitará al usuario
+    post:
+      tags:
+        - Tasks
+      summary: Invitar colaborador por email
+      description: El dueño de la tarea invita a un usuario registrado. Se dispara una notificación HTTP asíncrona mediante Resend.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteInput"
+      responses:
+        200:
+          description: Invitación exitosa y correo enviado.
+        400:
+          description: Operación inválida (El usuario ya está en el equipo o es el dueño).
+        403:
+          $ref: "#/components/responses/ForbiddenError"
+        404:
+          description: El correo no coincide con ningún usuario registrado.

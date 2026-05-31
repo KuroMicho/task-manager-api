@@ -22,7 +22,7 @@ export const getComments = asyncHandler(async (req, res) => {
   );
 
   if (!isOwner && !isMember) {
-    res.status(401);
+    res.status(403);
     throw new Error("No tienes permiso para ver los comentarios de esta tarea");
   }
 
@@ -54,7 +54,7 @@ export const createComment = asyncHandler(async (req, res) => {
   );
 
   if (!isOwner && !isMember) {
-    res.status(401);
+    res.status(403);
     throw new Error("No tienes permiso para comentar en esta tarea");
   }
 
@@ -96,7 +96,7 @@ export const updateComment = asyncHandler(async (req, res) => {
   }
 
   if (comment.user.toString() !== req.user._id.toString()) {
-    res.status(401);
+    res.status(403);
     throw new Error("No autorizado para editar este comentario");
   }
 
@@ -127,7 +127,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
 
   // 🛡️ Seguridad: Solo el autor puede borrar su comentario
   if (comment.user.toString() !== req.user._id.toString()) {
-    res.status(401);
+    res.status(403);
     throw new Error("No autorizado para borrar este comentario");
   }
 

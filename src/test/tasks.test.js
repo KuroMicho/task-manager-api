@@ -132,7 +132,7 @@ describe("Pruebas de Tareas e Invitaciones", () => {
         .delete(`/api/v1/tasks/${taskId}`)
         .set("Cookie", [collaboratorCookie]);
 
-      expect(res.statusCode).toBe(401);
+      expect(res.statusCode).toBe(403);
       expect(res.body.message).toMatch(/No tienes permiso/i);
     });
 

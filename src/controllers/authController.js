@@ -84,7 +84,7 @@ export const loginUser = asyncHandler(async (req, res) => {
       email: user.email,
     });
   } else {
-    res.status(401);
+    res.status(404);
     throw new Error("Email o contraseña incorrectos");
   }
 });
