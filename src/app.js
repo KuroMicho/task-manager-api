@@ -63,17 +63,20 @@ io.on("connection", (socket) => {
   });
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    uptime: process.uptime(),
+    timestamp: new Date(),
+  });
+});
+
 // MiDLEWARES DE SEGURIDAD Y LOGS
 app.use(helmet());
 
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
-
-// Defínela ANTES de app.use("/api/", limiter) o cámbiale la ruta
-app.get("/health", (req, res) => {
-  res.status(200).send("OK");
-});
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
