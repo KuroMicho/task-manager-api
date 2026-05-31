@@ -1,4 +1,4 @@
-name: Node.js CI
+name: Node.js Backend CI
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: ["main"]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
 
     services:
@@ -17,28 +17,29 @@ jobs:
           - 27017:27017
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Descargar código fuente
+        uses: actions/checkout@v4
 
-      - name: Use Node.js 24.x
+      - name: Configurar entorno de Node.js 24.x
         uses: actions/setup-node@v4
         with:
           node-version: 24.x
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Instalar dependencias limpias (Producción + Desarrollo)
         run: npm ci
 
-      - name: Run build (if present)
+      - name: Compilar aplicación (TypeScript a JS Nativo)
         run: npm run build --if-present
 
-      - name: Run Tests
+      - name: Ejecutar batería de pruebas (Jest / Supertest)
         env:
           NODE_ENV: test
           MONGO_URI_TEST: mongodb://localhost:27017/task_manager_test
           JWT_SECRET: ${{ secrets.JWT_SECRET_TEST || 'test_secret_key_123' }}
         run: npm test
 
-      - name: Deploy to Render
-        if: github.ref == 'refs/heads/main' && success()
+      - name: Notificar Despliegue Automatizado a Render
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && success()
         run: |
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
